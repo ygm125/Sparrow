@@ -5,8 +5,7 @@
         HEAD = document.head || document.getElementsByTagName("head")[0],
         class2type = {},
         toString = Object.prototype.toString,
-        quickExpr = /^(?:[^<]*(<[\w\W]+>)[^>]*$|#([\w\-]+)$)/,
-        userAgent = navigator.userAgent;
+        quickExpr = /^(?:[^<]*(<[\w\W]+>)[^>]*$|#([\w\-]+)$)/;
 
     var _S = root.S,
          S = function(selector, context) {
@@ -58,6 +57,7 @@
         version: "v0.1"
     }
 
+    //=====Base
     var extend = S.extend = S.fn.extend = function(target, source) {
         var args = [].slice.call(arguments), key,
                 ride = typeof args[args.length - 1] == "boolean" ? args.pop() : true;
@@ -118,8 +118,50 @@
             }
             self.complete = S.noop;
             return self;
+        },
+        browser: (function() {
+            var ua = navigator.userAgent.toLowerCase(),
+            browser = {
+                msie: /msie/,
+                msie6: /msie 6\.0/,
+                msie7: /msie 7\.0/,
+                msie8: /msie 8\.0/,
+                msie9: /msie 9\.0/,
+                msie10: /msie 10\.0/,
+                firefox: /firefox/,
+                opera: /opera/,
+                webkit: /webkit/,
+                iPad: /ipad/,
+                iPhone: /iphone/,
+                android: /android/
+            };
+            for (var key in browser) {
+                browser[key] = browser[key].test(ua);
+            }
+            return browser;
+        })(),
+        each: function(object, callback) {
+            var i = 0,
+            length = object.length,
+            name;
+            if (length) {
+                for (; i < length; i++) {
+                    callback.call(object[i], i, object[i]);
+                }
+            }else {
+                for (name in object) {
+                    callback.call(object[name], name, object[name]);
+                }
+            }
+            return object;
+        },
+        exports: function(name) {
+            root.S = _S;
+            name && (root[name] = S);
+            return S;
         }
     });
+    //----------
 
     //===domReady
     extend(S, {
@@ -130,11 +172,6 @@
             S.isReady = true;
             S.ready.fire();
             S.fireReady = S.noop;
-        },
-        exports: function(name) {
-            root.S = _S;
-            name && (root[name] = S);
-            return S;
         }
     });
 
@@ -173,7 +210,7 @@
         }
     }
     //----------------------------------
-    
+
     root.S = S;
-    
+
 })();
