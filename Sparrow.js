@@ -22,35 +22,29 @@
 
 
     function tuneContext(context) {
-        // 1). context 为 undefined 是最常见的情况，优先考虑
         if (context === undefined) {
             context = document;
-        }
-        // 2). context 的第二使用场景是传入 #id
-        else if (S.isString(context) && quickID.test(context)) {
+        }else if (S.isString(context) && quickID.test(context)) {
             context = getElementById(context.slice(1), document);
-            // 注：#id 可能无效，这时获取的 context 为 null
-        }
-        // 3). context 还可以传入 HTMLElement, 此时无需处理
-        // 4). 经历 1 - 3, 如果 context 还不是 HTMLElement, 赋值为 null
-        else if (context && context.nodeType !== 1 && context.nodeType !== 9) {
+        }else if(context instanceof S){
+            context=context[0];
+        }else if (context && context.nodeType !== 1 && context.nodeType !== 9) {
             context = null;
         }
         return context;
     }
 
-    // query #id
     function getElementById(id, context) {
         if (context.nodeType !== 9) {
             context = context.ownerDocument;
         }
         return context.getElementById(id);
     }
-    // query tag
+
     function getElementsByTagName(tag, context) {
         return context.getElementsByTagName(tag);
     }
-    // query .cls
+
     function getElementsByClassName(cls, tag, context) {
         var els = context.getElementsByClassName(cls),
             ret = els, i = 0, j = 0, len = els.length, el;
@@ -68,14 +62,11 @@
         return ret;
     }
     if (!document.getElementsByClassName) {
-        // 降级使用 querySelectorAll
         if (document.querySelectorAll) {
             getElementsByClassName = function(cls, tag, context) {
                 return context.querySelectorAll((tag ? tag : '') + '.' + cls);
             }
-        }
-        // 降级到普通方法
-        else {
+        }else {
             getElementsByClassName = function(cls, tag, context) {
                 var els = context.getElementsByTagName(tag || ANY),
                     ret = [], i = 0, j = 0, len = els.length, el, t;
@@ -97,8 +88,7 @@
     S.fn = S.prototype = {
         constructor: S,
         init: function(selector, context) {
-            var match, elem, id, tag, cls, ret = [],
-
+            var match, elem, id, tag, cls, ret,
                 context = tuneContext(context);
 
             if (!selector) {
@@ -110,7 +100,7 @@
                 this.length = 1;
                 return this;
             }
-            // The body element only exists once, optimize finding it
+
             if (selector === "body" && document.body) {
                 this.context = document;
                 this[0] = document.body;
@@ -131,45 +121,37 @@
                         return this;
                     }
                 } else if (match = quickExpr.exec(selector)) {
-
                     if (match) {
                         if (match[1]) {
-                            //new str
+                           selector= S.buildFragment(selector).childNodes;
                         } else {
                             id = match[2];
                             tag = match[3];
                             cls = match[4];
 
                             if ((context = id ? getElementById(id, context) : context)) {
-                                // #id .cls | #id tag.cls | .cls | tag.cls
                                 if (cls) {
-                                    if (!id || selector.indexOf(SPACE) !== -1) { // 排除 #id.cls
+                                    if (!id || selector.indexOf(SPACE) !== -1) {
                                         ret = getElementsByClassName(cls, tag, context);
-                                    }
-                                    // 处理 #id.cls
-                                    else {
+                                    }else {
                                         elem = getElementById(id, context);
                                         if (elem && S.hasClass(elem, cls)) {
                                             ret = [elem];
                                         }
                                     }
-                                }
-                                // #id tag | tag
-                                else if (tag) { // 排除空白字符串
+                                }else if (tag) {
                                     ret = getElementsByTagName(tag, context);
                                 }
                             }
 
                         }
                     }
-
                 }
 
             } else if (S.isFunction(selector)) {
                 return S.ready(selector);
             }
-
-            return ret;
+            return S.merge(this, ret || selector);
         },
         length: 0,
         toArray: function() {
@@ -263,7 +245,7 @@
                 el.detachEvent("on" + type, fn || S.noop);
             }
         },
-        deferred: function() {//一个简单的异步列队
+        deferred: function() {
             var list = [], self = function(fn) {
                 fn && fn.call && list.push(fn);
                 return self;
@@ -303,6 +285,47 @@
             root.S = _S;
             name && (root[name] = S);
             return S;
+        },
+        merge: function( first, second ) {
+            var l = second.length,
+                i = first.length,
+                j = 0;
+
+            if ( typeof l === "number" ) {
+                for ( ; j < l; j++ ) {
+                    first[ i++ ] = second[ j ];
+                }
+            } else {
+                while ( second[j] !== undefined ) {
+                    first[ i++ ] = second[ j++ ];
+                }
+            }
+            first.length = i;
+            return first;
+        },
+        buildFragment: function (node)
+        {
+            var type = typeof node;
+            if (type === 'string')
+            {
+                var fragment = document.createDocumentFragment(),
+                    div = document.createElement("div"),
+                    ret = [];
+
+                div.innerHTML = node;
+                while (div.childNodes[0] != null)
+                {
+                    fragment.appendChild(div.childNodes[0]);
+                }
+                node = fragment;
+                //Release  memory
+                div = null;
+            }
+            if (type === 'number')
+            {
+                node += '';
+            }
+            return node;
         }
     });
 
@@ -310,7 +333,20 @@
         root.JSON = {
             parse: function(data) {
                 return (new Function("return " + data))();
-            }
+            },
+            stringify: function (vContent) { 
+              if (vContent instanceof Object) { 
+                var sOutput = ""; 
+                if (vContent.constructor === Array) { 
+                  for (var nId = 0; nId < vContent.length; sOutput += this.stringify(vContent[nId]) + ",", nId++); 
+                  return "[" + sOutput.substr(0, sOutput.length - 1) + "]"; 
+                } 
+                if (vContent.toString !== Object.prototype.toString) { return "\"" + vContent.toString().replace(/"/g, "\\$&") + "\""; } 
+                for (var sProp in vContent) { sOutput += "\"" + sProp.replace(/"/g, "\\$&") + "\":" + this.stringify(vContent[sProp]) + ","; } 
+                return "{" + sOutput.substr(0, sOutput.length - 1) + "}"; 
+              } 
+              return typeof vContent === "string" ? "\"" + vContent.replace(/"/g, "\\$&") + "\"" : String(vContent); 
+            } 
         }
     }
     //----------
