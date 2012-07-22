@@ -366,7 +366,7 @@
     });
 
     if (!root.JSON) {
-        root.JSON = {
+        S.JSON = {
             parse: function(data) {
                 return (new Function("return " + data))();
             },
@@ -386,7 +386,6 @@
         }
     }
     //----------
-
     //========support
     S.support = (function() {
         var support,
@@ -420,9 +419,7 @@
 
         return support;
     })();
-
     //----------
-
     //===Attr
     extend(S.fn, {
         attr: function(name, value) {
@@ -456,10 +453,38 @@
                 }
                 this.className = S.trim(ori);
             });
+        },
+        removeClass: function (name)
+        {
+            return this.each(function() {
+                if(name){
+                    var classNames = name.split(SPACE),
+                               ori = SPACE + this.className + SPACE,
+                               rm;
+                    while(rm = classNames.shift()){
+                        ori=ori.replace(SPACE+rm+SPACE,SPACE);
+                    }
+                    this.className=S.trim(ori);
+                }else {
+                    this.className = '';
+                }
+            });
+        },
+        hasClass: function(selector) {
+            return (SPACE+this[0].className+SPACE).indexOf(SPACE+selector+SPACE)!=-1?true:false;
         }
     });
     //---------
-
+    //===Css
+    extend(S.fn, {
+        css: function(name, value) {
+            return this.each(function() {
+                
+              
+            });
+        }
+    });
+    //--------
     //===domReady
     extend(S, {
         isReady: false,
