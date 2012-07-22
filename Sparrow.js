@@ -193,7 +193,8 @@
     var each = S.each = S.fn.each = function(object, callback) {
         var i = 0,
             length,
-            name;
+            name,
+            breaker;
 
         if (S.isFunction(object)) {
             callback = object;
@@ -204,11 +205,17 @@
 
         if (length) {
             for (; i < length; i++) {
-                callback.call(object[i], i, object[i]);
+               breaker = callback.call(object[i], i, object[i]);
+               if(breaker){
+                  return breaker
+               }
             }
         } else {
             for (name in object) {
-                callback.call(object[name], name, object[name]);
+               breaker = callback.call(object[name], name, object[name]);
+               if(breaker){
+                  return breaker
+               }
             }
         }
         return object;
@@ -217,6 +224,11 @@
     extend(S, {
         log: function(s) {
             console && console.log(s);
+        },
+        trim: core_trim ? function(string) {
+            return string.trim();
+        } : function(string) {
+            return string.replace(rtrim, '');
         },
         noop: function() { },
         type: function(obj) {
@@ -326,6 +338,30 @@
                 node += '';
             }
             return node;
+        },
+        attr:function(el, attribute, value) {
+            if ('object' === typeof attribute) {
+                for (var prop in attribute) {
+                    S.attr(el, prop, attribute[prop]);
+                }
+            }else{
+                if(value){
+                    if (attribute in el) {
+                        el[attribute] = value;
+                    } else {
+                        el.setAttribute(attribute, value);
+                    }
+                }else{
+                    if ((attribute in el) && 'href' != attribute) {
+                        return el[attribute];
+                    } else {
+                        return el.getAttribute(attribute, S.support.hrefNormalized ? 2 : null);
+                    }
+                }
+            }
+        },
+        removeAttr: function (elem, name){
+            elem.removeAttribute(name);
         }
     });
 
@@ -390,23 +426,38 @@
     //===Attr
     extend(S.fn, {
         attr: function(name, value) {
-            this.each(function() {
-                if (name in this) {
-                    if (value) {
-                        this.name = value
-                    } else {
-                        if (S.support.hrefNormalized)
-                            return this.name;
-                        else
-                            return this.getAttribute(name, 2);
-                    }
-                } else {
-                    return value ? (this.setAttribute(name, value)) : (this.getAttribute(name));
+            return this.each(function() {
+               return S.attr(this,name,value);
+            });
+        },
+        removeAttr: function(name) {
+            return this.each(function() {
+                S.removeAttr(this, name);
+            });
+        },
+        val:function(value){
+            return this.each(function() {
+                if(value){
+                    this.value=value;
+                }else{
+                    return this.value;
                 }
+            });
+        },
+        addClass: function(name) {
+            return this.each(function() {
+                var classNames = name.split(SPACE),
+                           ori = SPACE + this.className + SPACE,
+                           rm;
+                while(rm = classNames.shift()){
+                    if (ori.indexOf(SPACE + rm + SPACE) === -1) {
+                        ori += rm + SPACE;
+                    }
+                }
+                this.className = S.trim(ori);
             });
         }
     });
-
     //---------
 
     //===domReady
