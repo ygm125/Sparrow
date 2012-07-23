@@ -338,26 +338,19 @@
             }
             return node;
         },
-        attr:function(el, attribute, value) {
-            if ('object' === typeof attribute) {
-                for (var prop in attribute) {
-                    S.attr(el, prop, attribute[prop]);
+        getAttr:function(el,attribute){
+                if ((attribute in el) && 'href' != attribute) {
+                    return el[attribute];
+                } else {
+                    return el.getAttribute(attribute, S.support.hrefNormalized ? null : 2);
                 }
-            }else{
-                if(value){
-                    if (attribute in el) {
-                        el[attribute] = value;
-                    } else {
-                        el.setAttribute(attribute, value);
-                    }
-                }else{
-                    if ((attribute in el) && 'href' != attribute) {
-                        return el[attribute];
-                    } else {
-                        return el.getAttribute(attribute, S.support.hrefNormalized ? 2 : null);
-                    }
+        },
+        setAttr:function(el, attribute, value){
+                if (attribute in el) {
+                    el[attribute] = value;
+                } else {
+                    el.setAttribute(attribute, value);
                 }
-            }
         },
         removeAttr: function (elem, name){
             elem.removeAttribute(name);
@@ -388,8 +381,26 @@
                     return elem.currentStyle['styleFloat'];
                 }
                 return elem.currentStyle[S.camelCase(name)];
+        },
+        access:function(elems, fn, key, value, chainable){
+            if (typeof key === "object" ) {
+                for (var i in key ) {
+                    S.access(elems, fn, i, key[i], 1);
+                }
+                return elems;
+            }else{
+                if(value){
+                    elems.each(function(){
+                        fn(this,key,value);
+                    });
+                    if(!chainable){
+                        return elems;
+                    }
+                }else{
+                   return fn(elems[0],key);
+                }
+            }
         }
-
     });
 
     if (!root.JSON) {
@@ -452,20 +463,21 @@
     //===Attr
     extend(S.fn, {
         attr: function(name, value) {
-            if(value){
-                return this.each(function() {
-                    S.attr(this,name,value);
-                });
-            }else{
-                return S.attr(this[0],name);
-            }
+            return S.access(this, function( elem, name, value ) {
+                return value ? S.setAttr( elem, name, value ) : S.getAttr( elem, name );
+            }, name, value);
         },
         removeAttr: function(name) {
             return this.each(function() {
                 S.removeAttr(this, name);
             });
         },
-        val:function(value){
+        val:function(val){
+
+            // return S.access(this, function( elem, name, value ) {
+            //     return value ? S.setAttr( elem, name, value ) : S.getAttr( elem, name );
+            // }, name, value);
+            
             if(value){
                 return this.each(function() {
                     this.value=value;
