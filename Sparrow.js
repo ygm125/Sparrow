@@ -7,6 +7,7 @@
         quickID = /#([\w\-]+)$/,
         quickExpr = /^(?:[^<]*(<[\w\W]+>)[^>]*$|(?:#([\w-]+))?\s*([\w-]+|\*)?\.?([\w-]+)?$)/,
         rtrim = /(^\s*)|(\s*$)/g,
+        rcamelCase = /-([a-z])/ig,
 
         core_slice = Array.prototype.slice,
         core_trim = String.prototype.trim,
@@ -160,11 +161,6 @@
         get: function(num) {
             return num == null ? this.toArray() :
             (num < 0 ? this[this.length + num] : this[num]);
-        },
-        trim: core_trim ? function(string) {
-            return string.trim();
-        } : function(string) {
-            return string.replace(rtrim, '');
         }
     }
 
@@ -193,8 +189,7 @@
     var each = S.each = S.fn.each = function(object, callback) {
         var i = 0,
             length,
-            name,
-            breaker;
+            name;
 
         if (S.isFunction(object)) {
             callback = object;
@@ -205,30 +200,34 @@
 
         if (length) {
             for (; i < length; i++) {
-               breaker = callback.call(object[i], i, object[i]);
-               if(breaker){
-                  return breaker
+               if(callback.call(object[i], i, object[i])===false){
+                  break;
                }
             }
         } else {
             for (name in object) {
-               breaker = callback.call(object[name], name, object[name]);
-               if(breaker){
-                  return breaker
+               if(callback.call(object[name], name, object[name])===false){
+                  break;
                }
             }
         }
         return object;
     }
 
+    S.trim = S.fn.trim = core_trim ? function(string) {
+            return string.trim();
+        } : function(string) {
+            return string.replace(rtrim, '');
+    }
+
     extend(S, {
         log: function(s) {
             console && console.log(s);
         },
-        trim: core_trim ? function(string) {
-            return string.trim();
-        } : function(string) {
-            return string.replace(rtrim, '');
+        camelCase: function (string){
+            return string.replace('-ms-', 'ms-').replace(rcamelCase, function (match, letter){
+                return (letter + '').toUpperCase();
+            });
         },
         noop: function() { },
         type: function(obj) {
@@ -362,7 +361,35 @@
         },
         removeAttr: function (elem, name){
             elem.removeAttribute(name);
+        },
+        setCss:function (elem, name, value){
+            if (name === 'opacity' && !S.support.opacity){
+                elem.style.filter = 'alpha(opacity=' + value * 100 + ')';
+            }else if(name == "float"){
+                elem.style[ S.support.cssFloat ? "cssFloat" : "styleFloat" ] = value;
+            }else{
+                elem.style[S.camelCase(name)] = value;
+            }
+        },
+        getCss: window.getComputedStyle ?
+            function (elem, name)
+            {
+               return document.defaultView.getComputedStyle(elem, null).getPropertyValue( name );
+            } :
+            function (elem, name)
+            {
+                if (name === 'width' && elem.currentStyle['width'] === 'auto') {
+                    return elem.offsetWidth;
+                }
+                if (name === 'height' && elem.currentStyle['height'] === 'auto'){
+                    return elem.offsetHeight;
+                }
+                if(name == "float"){
+                    return elem.currentStyle['styleFloat'];
+                }
+                return elem.currentStyle[S.camelCase(name)];
         }
+
     });
 
     if (!root.JSON) {
@@ -384,6 +411,8 @@
               return typeof vContent === "string" ? "\"" + vContent.replace(/"/g, "\\$&") + "\"" : String(vContent); 
             } 
         }
+    }else{
+        S.JSON = root.JSON;
     }
     //----------
     //========support
@@ -423,9 +452,13 @@
     //===Attr
     extend(S.fn, {
         attr: function(name, value) {
-            return this.each(function() {
-               return S.attr(this,name,value);
-            });
+            if(value){
+                return this.each(function() {
+                    S.attr(this,name,value);
+                });
+            }else{
+                return S.attr(this[0],name);
+            }
         },
         removeAttr: function(name) {
             return this.each(function() {
@@ -433,13 +466,13 @@
             });
         },
         val:function(value){
-            return this.each(function() {
-                if(value){
+            if(value){
+                return this.each(function() {
                     this.value=value;
-                }else{
-                    return this.value;
-                }
-            });
+                });
+            }else{
+                return this[0].value;
+            }
         },
         addClass: function(name) {
             return this.each(function() {
@@ -478,9 +511,28 @@
     //===Css
     extend(S.fn, {
         css: function(name, value) {
+            if(value){
+                return this.each(function() {
+                    S.setCss(this,name,value);
+                });
+            }else{
+                return S.getCss(this[0],name);
+            }
+        },
+        show:function(elem){
             return this.each(function() {
-                
-              
+                if(!S.attr(this,'olddisplay')){
+                    S.attr(this,'olddisplay',S.getCss(this,'display'))
+                }
+                S.setCss(this,'display',S.attr(this,'olddisplay'));
+            });
+        },
+        hide:function(elem){
+             return this.each(function() {
+                if(!S.attr(this,'olddisplay')){
+                    S.attr(this,'olddisplay',S.getCss(this,'display'))
+                }
+                S.setCss(this,'display','none');
             });
         }
     });
