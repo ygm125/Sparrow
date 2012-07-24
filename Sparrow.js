@@ -1,4 +1,4 @@
-﻿(function() {
+(function() {
     var root = this,
         document = root.document,
         w3c = document.dispatchEvent,       //w3c事件模型
@@ -214,6 +214,58 @@
         return object;
     }
 
+    //=======================
+    //======================
+    var Promise = function() {
+    }
+
+    Promise.prototype.then = function(onResolved, onRejected) {
+                                /* invoke handlers based upon state transition */
+    };
+
+    Promise.prototype.resolve = function(value) {
+    };
+
+    Promise.prototype.reject = function(error) {
+    };
+
+    Promise.when = function() {
+                                /* handle promises arguments and queue each */
+    };
+
+    S.ajax=function(url,data,callback){
+        var xho = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP'),
+        defOption={
+            type:'POST',
+            dataType:'html',
+            callback:S.noop,
+            async: true
+        },
+        promise=new Promise();
+
+        if(S.isObject(url)){
+            defOption=S.extend(defOption,url);
+        }else{
+            defOption.url=url;
+        }
+        xho.onreadystatechange=function(){
+            if (obj.readyState == 4 && obj.status == 200) {
+                //defOption.callback(xho.responseText);
+                promise.resolve(xho.responseText);
+            } 
+        } 
+        xho.open(defOption.type, defOption.url, defOption.async); 
+        if(defOption.type==='POST'){
+          xho.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        }
+        xho.send(data);
+
+        return promise;
+    }
+    //===================
+    //===================
+
+
     S.trim = S.fn.trim = core_trim ? function(string) {
             return string.trim();
         } : function(string) {
@@ -241,6 +293,9 @@
         },
         isArray: Array.isArray || function(obj) {
             return S.type(obj) === "array";
+        },
+        isObject: function(obj) {
+            return S.type(obj) === 'object';
         },
         on: w3c ? function(el, type, fn, phase) {
             el.addEventListener(type, fn, !!phase);
@@ -367,7 +422,7 @@
         getCss: window.getComputedStyle ?
             function (elem, name)
             {
-               return document.defaultView.getComputedStyle(elem, null).getPropertyValue( name );
+               return document.defaultView.getComputedStyle(elem, null).getPropertyValue(name);
             } :
             function (elem, name)
             {
@@ -400,7 +455,37 @@
                    return fn(elems[0],key);
                 }
             }
-        }
+        },
+        getScrollTop: function(node) {
+            var doc = node ? node.ownerDocument : document;
+            return doc.documentElement.scrollTop || doc.body.scrollTop;
+        },
+        getScrollLeft: function(node) {
+            var doc = node ? node.ownerDocument : document;
+            return doc.documentElement.scrollLeft || doc.body.scrollLeft;
+        },
+        offset:function(elem){
+            var left = 0, top = 0, right = 0, bottom = 0;
+            if (elem.getBoundingClientRect) {
+                var rect = elem.getBoundingClientRect();
+                left = right = S.getScrollLeft(elem); top = bottom = S.getScrollTop(elem);
+                left += rect.left; right += rect.right;
+                top += rect.top; bottom += rect.bottom;
+            } else {
+                var n = elem;
+                while (n) { left += n.offsetLeft, top += n.offsetTop; n = n.offsetParent; };
+                right = left + elem.offsetWidth; bottom = top + elem.offsetHeight;
+            };
+            return { "left": left, "top": top, "right": right, "bottom": bottom };
+        },
+        position: function(elem) {
+            var rect = S.rect(elem), sLeft = S.getScrollLeft(elem), sTop = S.getScrollTop(elem);
+            rect.left -= sLeft; rect.right -= sLeft;
+            rect.top -= sTop; rect.bottom -= sTop;
+            return rect;
+        },
+        contains: document.defaultView ? function (a, b) { return !!( a.compareDocumentPosition(b) & 16 ); }
+        : function (a, b) { return a != b && a.contains(b); }
     });
 
     if (!root.JSON) {
@@ -472,19 +557,10 @@
                 S.removeAttr(this, name);
             });
         },
-        val:function(val){
-
-            // return S.access(this, function( elem, name, value ) {
-            //     return value ? S.setAttr( elem, name, value ) : S.getAttr( elem, name );
-            // }, name, value);
-            
-            if(value){
-                return this.each(function() {
-                    this.value=value;
-                });
-            }else{
-                return this[0].value;
-            }
+        val:function(value){
+            return S.access(this, function( elem, name, value ) {
+                 return value ? (elem.value = value) : elem.value;
+            }, null, value);
         },
         addClass: function(name) {
             return this.each(function() {
@@ -523,32 +599,54 @@
     //===Css
     extend(S.fn, {
         css: function(name, value) {
-            if(value){
-                return this.each(function() {
-                    S.setCss(this,name,value);
-                });
-            }else{
-                return S.getCss(this[0],name);
-            }
+            return S.access(this, function( elem, name, value ) {
+                return value ? S.setCss( elem, name, value ) : S.getCss( elem, name );
+            }, name, value);
         },
         show:function(elem){
             return this.each(function() {
-                if(!S.attr(this,'olddisplay')){
-                    S.attr(this,'olddisplay',S.getCss(this,'display'))
+                if(!S.getAttr(this,'olddisplay')){
+                    S.setAttr(this,'olddisplay',S.getCss(this,'display'))
                 }
-                S.setCss(this,'display',S.attr(this,'olddisplay'));
+                S.setCss(this,'display',S.getAttr(this,'olddisplay'));
             });
         },
         hide:function(elem){
              return this.each(function() {
-                if(!S.attr(this,'olddisplay')){
-                    S.attr(this,'olddisplay',S.getCss(this,'display'))
+                if(!S.getAttr(this,'olddisplay')){
+                    S.setAttr(this,'olddisplay',S.getCss(this,'display'))
                 }
                 S.setCss(this,'display','none');
             });
         }
     });
     //--------
+    //===Offset
+    extend(S.fn, {
+        offset: function() {
+          return S.offset(this[0]);
+        },
+        position:function(){
+          return S.position(this[0]);
+        }
+    });
+    //---------
+    //===Manipulation
+    extend(S.fn, {
+        html: function() {
+
+        },
+        text:function(){
+
+        },
+        append:function(){
+
+        }
+    });
+    //-----------
+    //================
+
+
     //===domReady
     extend(S, {
         isReady: false,
