@@ -14,33 +14,36 @@
 			
 				var bb = function(callback, errback) {
 
-		            var result = S.defer();
+		            var promise = S.Promise();
 
 		            setTimeout(function() {
 
-		            	result.resolve('OKBB');
+		            	promise.resolve('OKBB');
 		              
 		            }, 2000);
 
-		            return result.promise;
+		            return promise.promise;
 		        };
 
 				var cc = function(callback, errback) {
 
-		            var result = S.defer();
+		            var promise = S.Promise();
 
 		            setTimeout(function() {
 
-		            	result.resolve('OKCC');
+		            	promise.resolve('OKCC');
 		              
 		            }, 1000);
 
-		            return result.promise;
+		            return promise.promise;
 		        };
+
+		      
 
 				S.whenAll([bb(),cc()]).then(function(res){
 					console.log(res);
 				});
+
 
 			});
 

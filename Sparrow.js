@@ -214,12 +214,7 @@
         return object;
     }
 
-    //=======================
-    //======================
-    var isPromise = function (value) {
-        return value && typeof value.then === "function";
-    };
-
+    //================Promise
     var ref = function (value) {
         if (value && typeof value.then === "function")
             return value;
@@ -238,34 +233,32 @@
         };
     };
 
-    var defer = function () {
+    var Promise = function () {
 
-        var pending = [], value, deferred = {};
-     
-            deferred.resolve= function (_value) {
-                if (pending) {
-                    value = ref(_value);
-                    for (var i = 0, ii = pending.length; i < ii; i++) {
-                        value.then.apply(value, pending[i]);
+        var pending = [], value, 
+
+            promise = {
+                resolve: function (_value) {
+                    if (pending) {
+                        value = ref(_value);
+                        for (var i = 0, ii = pending.length; i < ii; i++) {
+                            value.then.apply(value, pending[i]);
+                        }
+                        pending = undefined;
                     }
-                    pending = undefined;
+                },
+                reject: function(_value){
+                    this.resolve(reject(_value));
                 }
-            }
+            };
 
-            deferred.reject=function(_value){
-                this.resolve(reject(_value));
-            }
-
-            deferred.promise={
+            promise.promise={
                 then: function (_callback, _errback) {
-                    var result = defer();
-                   
+                    var result = Promise();
                     _callback = _callback || function (value) {
-                       
                         return value;
                     };
                     _errback = _errback || function (reason) {
-                       
                         return reject(reason);
                     };
                     var callback = function (value) {
@@ -280,32 +273,31 @@
                         value.then(callback, errback);
                     }
                     return result.promise;
+                },
+                done: function(_callback){
+                   return this.then(_callback,null);
+                },
+                fail: function(_errback){
+                   return this.then(null,_errback);
+                },
+                always: function(fn){
+                   return this.done(fn).fail(fn);
                 }
             }
 
-            deferred.promise.done=function(_callback){
-               return this.then(_callback,null);
-            }
-
-            deferred.promise.fail=function(_errback){
-               return this.then(null,_errback);
-            }
-
-            deferred.promise.always=function(fn){
-               return this.done(fn).fail(fn);
-            }
-
-        return deferred;
+        return promise;
     };
 
-    S.Promise=S.defer=defer;
+    S.Promise = Promise;
 
-    S.whenAll=function(promises){
-            var deferred = defer(),
+    S.when=function(promises,operate){
+            var promise = Promise(),
                 countDown = promises.length,
                 result=[],
                 gloBraker=false;
-           
+
+            operate = operate || 'ALL';
+
             S.each(promises,function(i,v){
                 v.then(function(res){
                     d(i,res);
@@ -318,19 +310,32 @@
                 if(gloBraker)return;
                 if('err'===state){
                     gloBraker=true;
-                    for (var i = 0; i < promises.length; i++) {
-                        promises[i].xhr.abort();//终止请求
-                    };
-                    deferred.reject({'err':value,'errNum':key});
+                    //终止请求 情况有多种 考虑不全 暂时去掉
+                    // for (var i = 0,j = promises.length; i < j ; i++) {
+                    //     promises[i].xhr&&(promises[i].xhr.abort());
+                    // };
+                    promise.reject({'err':value,'errNum':key});
                 }else{
                     result[key]=value;
-                    if (--countDown === 0) {
-                       deferred.resolve(result);
+                    if (operate==='ALL' && --countDown === 0) {
+                       promise.resolve(result);
+                    }
+                    if(operate==='ANY'){
+                       gloBraker=true;
+                       promise.resolve(result);
                     }
                 }
             }
 
-            return deferred.promise;
+            return promise.promise;
+    }
+
+    S.whenAll=function(promises){
+       return S.when(promises,'ALL');
+    }
+
+    S.whenAny=function(promises){
+       return S.when(promises,'ANY');
     }
 
     S.param=function(obj,url){
@@ -366,8 +371,8 @@
             dataType:'html',
             async: true
         },
-        deferred=defer();
-        deferred.xhr=xhr;//给定xhr
+        promise=Promise();
+        promise.xhr=xhr;//给定xhr
 
         if(S.isObject(url)){
             defOption=S.extend(defOption,url);
@@ -392,9 +397,9 @@
                     }else{
                         res=xhr.responseText;
                     }
-                    deferred.resolve(res);
+                    promise.resolve(res);
                 }else{//错误处理
-                    deferred.reject(xhr.status);
+                    promise.reject(xhr.status);
                 }
             } 
         } 
@@ -404,11 +409,9 @@
         }
         xhr.send(defOption.data);
 
-        return deferred.promise;
+        return promise.promise;
     }
     //===================
-    //===================
-
 
     S.trim = S.fn.trim = core_trim ? function(string) {
             return string.trim();
