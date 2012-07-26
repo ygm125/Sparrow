@@ -318,6 +318,9 @@
                 if(gloBraker)return;
                 if('err'===state){
                     gloBraker=true;
+                    for (var i = 0; i < promises.length; i++) {
+                        promises[i].xhr.abort();//终止请求
+                    };
                     deferred.reject({'err':value,'errNum':key});
                 }else{
                     result[key]=value;
@@ -357,13 +360,14 @@
     }
 
     S.ajax=function(url,data){
-        var xho = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP'),
+        var xhr = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP'),
         defOption={
             type:'POST',
             dataType:'html',
             async: true
         },
         deferred=defer();
+        deferred.xhr=xhr;//给定xhr
 
         if(S.isObject(url)){
             defOption=S.extend(defOption,url);
@@ -379,26 +383,26 @@
            defOption.data=S.param(defOption.data);
         }
 
-        xho.onreadystatechange=function(){
-            if (xho.readyState == 4) {
-                if(xho.status >= 200 && xho.status< 300 || xho.status === 304){
+        xhr.onreadystatechange=function(){
+            if (xhr.readyState == 4) {
+                if(xhr.status >= 200 && xhr.status< 300 || xhr.status === 304){
                     var res;
                     if(defOption.dataType==='JSON'){
-                        res=S.parse(xho.responseText);
+                        res=S.parse(xhr.responseText);
                     }else{
-                        res=xho.responseText;
+                        res=xhr.responseText;
                     }
                     deferred.resolve(res);
-                }else{//错误
-                    deferred.reject(xho.status);
+                }else{//错误处理
+                    deferred.reject(xhr.status);
                 }
             } 
         } 
-        xho.open(defOption.type, defOption.url, defOption.async); 
+        xhr.open(defOption.type, defOption.url, defOption.async); 
         if(defOption.type==='POST'){
-          xho.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+          xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
         }
-        xho.send(defOption.data);
+        xhr.send(defOption.data);
 
         return deferred.promise;
     }
