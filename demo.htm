@@ -9,9 +9,39 @@
 
 		<script type="text/javascript">
 
+
 			$(function(){
 			
-					S("li").hide().show();
+				var bb = function(callback, errback) {
+
+		            var result = S.defer();
+
+		            setTimeout(function() {
+
+		            	result.resolve('OKBB');
+		              
+		            }, 2000);
+
+		            return result.promise;
+		        };
+
+				var cc = function(callback, errback) {
+
+		            var result = S.defer();
+
+		            setTimeout(function() {
+
+		            	result.resolve('OKCC');
+		              
+		            }, 1000);
+
+		            return result.promise;
+		        };
+
+				S.whenAll([bb(),cc()]).then(function(res){
+					console.log(res);
+				});
+
 			});
 
 

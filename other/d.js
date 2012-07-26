@@ -34,23 +34,27 @@ var defer = function () {
             }
         }
 
+        deferred.reject=function(_value){
+            this.resolve(reject(_value));
+        }
+
         deferred.promise={
             then: function (_callback, _errback) {
                 var result = defer();
-                // provide default callbacks and errbacks
+               
                 _callback = _callback || function (value) {
-                    // by default, forward fulfillment
+                   
                     return value;
                 };
                 _errback = _errback || function (reason) {
-                    // by default, forward rejection
+                   
                     return reject(reason);
                 };
                 var callback = function (value) {
-                    result.resolve(_callback(value));
+                    result.resolve(_callback(value)||value);
                 };
                 var errback = function (reason) {
-                    result.resolve(_errback(reason));
+                    result.reject(_errback(reason)||reason);
                 };
                 if (pending) {
                     pending.push([callback, errback]);

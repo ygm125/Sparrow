@@ -216,51 +216,187 @@
 
     //=======================
     //======================
-    var Promise = function() {
+    var isPromise = function (value) {
+        return value && typeof value.then === "function";
+    };
+
+    var ref = function (value) {
+        if (value && typeof value.then === "function")
+            return value;
+        return {
+            then: function (callback) {
+                return ref(callback(value));
+            }
+        };
+    };
+
+    var reject = function (reason) {
+        return {
+            then: function (callback, errback) {
+                return ref(errback(reason));
+            }
+        };
+    };
+
+    var defer = function () {
+
+        var pending = [], value, deferred = {};
+     
+            deferred.resolve= function (_value) {
+                if (pending) {
+                    value = ref(_value);
+                    for (var i = 0, ii = pending.length; i < ii; i++) {
+                        value.then.apply(value, pending[i]);
+                    }
+                    pending = undefined;
+                }
+            }
+
+            deferred.reject=function(_value){
+                this.resolve(reject(_value));
+            }
+
+            deferred.promise={
+                then: function (_callback, _errback) {
+                    var result = defer();
+                   
+                    _callback = _callback || function (value) {
+                       
+                        return value;
+                    };
+                    _errback = _errback || function (reason) {
+                       
+                        return reject(reason);
+                    };
+                    var callback = function (value) {
+                        result.resolve(_callback(value)||value);
+                    };
+                    var errback = function (reason) {
+                        result.reject(_errback(reason)||reason);
+                    };
+                    if (pending) {
+                        pending.push([callback, errback]);
+                    } else {
+                        value.then(callback, errback);
+                    }
+                    return result.promise;
+                }
+            }
+
+            deferred.promise.done=function(_callback){
+               return this.then(_callback,null);
+            }
+
+            deferred.promise.fail=function(_errback){
+               return this.then(null,_errback);
+            }
+
+            deferred.promise.always=function(fn){
+               return this.done(fn).fail(fn);
+            }
+
+        return deferred;
+    };
+
+    S.Promise=S.defer=defer;
+
+    S.whenAll=function(promises){
+            var deferred = defer(),
+                countDown = promises.length,
+                result=[],
+                gloBraker=false;
+           
+            S.each(promises,function(i,v){
+                v.then(function(res){
+                    d(i,res);
+                },function(err){
+                    d(i,err,'err');
+                });
+            });
+       
+            function d(key,value,state){
+                if(gloBraker)return;
+                if('err'===state){
+                    gloBraker=true;
+                    deferred.reject({'err':value,'errNum':key});
+                }else{
+                    result[key]=value;
+                    if (--countDown === 0) {
+                       deferred.resolve(result);
+                    }
+                }
+            }
+
+            return deferred.promise;
     }
 
-    Promise.prototype.then = function(onResolved, onRejected) {
-                                /* invoke handlers based upon state transition */
-    };
+    S.param=function(obj,url){
+        var oriParam,str='';
+        obj=obj||{};
+        if(url){
+            url=url.split('?');
+            if(url[1]){
+                oriParam=url[1].split("&");
+                for (var i = 0; i < oriParam.length; i++) {
+                        var p=oriParam[i].split("=");
+                        if(!(p[0] in obj)){
+                            obj[p[0]]=p[1];
+                        }
+                };
+            }
+        }
 
-    Promise.prototype.resolve = function(value) {
-    };
+        for (var key in obj) {
+            str+= encodeURIComponent(key) + "=" + encodeURIComponent(obj[key])+"&";
+        };
 
-    Promise.prototype.reject = function(error) {
-    };
+        if(oriParam){
+            return url[0]+'?'+str.replace(/&$/,'');
+        }
+        return str.replace(/&$/,'');
+    }
 
-    Promise.when = function() {
-                                /* handle promises arguments and queue each */
-    };
-
-    S.ajax=function(url,data,callback){
+    S.ajax=function(url,data){
         var xho = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP'),
         defOption={
             type:'POST',
             dataType:'html',
-            callback:S.noop,
             async: true
         },
-        promise=new Promise();
+        deferred=defer();
 
         if(S.isObject(url)){
             defOption=S.extend(defOption,url);
         }else{
             defOption.url=url;
+            defOption.data=data;
         }
+
+        if(defOption.type==='GET'){
+           defOption.url=S.param(defOption.data,defOption.url);
+           defOption.data=null;
+        }else{
+           defOption.data=S.param(defOption.data);
+        }
+
         xho.onreadystatechange=function(){
-            if (obj.readyState == 4 && obj.status == 200) {
-                //defOption.callback(xho.responseText);
-                promise.resolve(xho.responseText);
+            if (xho.readyState == 4 && xho.status == 200) {
+                var res;
+                if(defOption.dataType==='JSON'){
+                    res=S.parse(xho.responseText);
+                }else{
+                    res=xho.responseText;
+                }
+                deferred.resolve(res);
             } 
         } 
         xho.open(defOption.type, defOption.url, defOption.async); 
         if(defOption.type==='POST'){
           xho.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
         }
-        xho.send(data);
+        xho.send(defOption.data);
 
-        return promise;
+        return deferred.promise;
     }
     //===================
     //===================
