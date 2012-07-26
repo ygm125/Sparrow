@@ -380,14 +380,18 @@
         }
 
         xho.onreadystatechange=function(){
-            if (xho.readyState == 4 && xho.status == 200) {
-                var res;
-                if(defOption.dataType==='JSON'){
-                    res=S.parse(xho.responseText);
-                }else{
-                    res=xho.responseText;
+            if (xho.readyState == 4) {
+                if(xho.status >= 200 && xho.status< 300 || xho.status === 304){
+                    var res;
+                    if(defOption.dataType==='JSON'){
+                        res=S.parse(xho.responseText);
+                    }else{
+                        res=xho.responseText;
+                    }
+                    deferred.resolve(res);
+                }else{//错误
+                    deferred.reject(xho.status);
                 }
-                deferred.resolve(res);
             } 
         } 
         xho.open(defOption.type, defOption.url, defOption.async); 
