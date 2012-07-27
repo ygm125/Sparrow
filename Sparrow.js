@@ -12,6 +12,7 @@
         core_slice = Array.prototype.slice,
         core_trim = String.prototype.trim,
         core_toString = Object.prototype.toString,
+        core_splice = Array.prototype.splice,
 
         SPACE = ' ',
         ANY = '*',
@@ -161,6 +162,17 @@
         get: function(num) {
             return num == null ? this.toArray() :
             (num < 0 ? this[this.length + num] : this[num]);
+        },
+        slice: function(start,end){
+            return core_slice.call(this,start,end);
+        },
+        filter: function(fn) {
+            for (var i = this.length-1 , j = -1 ; i > j; i--) {
+                if(fn.call(this[i],i)){
+                    core_splice.call(this,i,1)
+                }
+            };
+            return this;
         }
     }
 
@@ -200,13 +212,13 @@
 
         if (length) {
             for (; i < length; i++) {
-               if(callback.call(object[i], i, object[i])===false){
+               if(callback.call(object[i], i, object[i], object)===false){
                   break;
                }
             }
         } else {
             for (name in object) {
-               if(callback.call(object[name], name, object[name])===false){
+               if(callback.call(object[name], name, object[name], object)===false){
                   break;
                }
             }
@@ -372,7 +384,6 @@
             async: true
         },
         promise=Promise();
-        promise.xhr=xhr;//给定xhr
 
         if(S.isObject(url)){
             defOption=S.extend(defOption,url);
@@ -518,6 +529,10 @@
         },
         buildFragment: function (node)
         {
+            if(node.nodeType){
+                return node;
+            }
+
             var type = typeof node;
             if (type === 'string')
             {
@@ -689,6 +704,10 @@
             getSetAttribute: div.className !== "t"
         }
 
+        if(S.browser.msie){
+            support.innerText=true;
+        }
+
         return support;
     })();
     //----------
@@ -705,9 +724,13 @@
             });
         },
         val:function(value){
-            return S.access(this, function( elem, name, value ) {
-                 return value ? (elem.value = value) : elem.value;
-            }, null, value);
+            if(value){
+                return this.each(function(){
+                    this.value=value;
+                });
+            }else{
+                return this[0].value
+            }
         },
         addClass: function(name) {
             return this.each(function() {
@@ -780,19 +803,53 @@
     //---------
     //===Manipulation
     extend(S.fn, {
-        html: function() {
-
+        empty: function (){
+            return this.each(function(){
+                this.innerHTML='';
+            });
         },
-        text:function(){
-
+        remove: function (){
+            return this[0].parentNode ? this[0].parentNode.removeChild(this[0]) : this;
         },
-        append:function(){
-
+        html: function(html) {
+            if(html){
+                return this.each(function(){
+                    this.innerHTML=html;
+                });
+            }else{
+                return this[0].innerHTML
+            }
+        },
+        text:function(text){
+            var name=S.support.innerText?'innerText':'textContent';
+            if(text){
+                return this.each(function(){
+                    this[name]=text;
+                });
+            }else{
+                return this[0][name];
+            }
+        },
+        append:function(node){
+            this[0].appendChild(S.buildFragment(node));
+            return this;
+        },
+        prepend:function(node){
+            var elem=this[0];
+            elem.firstChild ? elem.insertBefore(S.buildFragment(node), elem.firstChild) : elem.appendChild(S.buildFragment(node));
+            return this;
+        },
+        before:function(node){
+            this[0].parentNode.insertBefore(S.buildFragment(node), this[0]);
+            return this;
+        },
+        after:function(node){
+            var elem=this[0];
+            elem.nextSibling ? elem.parentNode.insertBefore(S.buildFragment(node), elem.nextSibling) : elem.parentNode.appendChild(S.buildFragment(node));
+            return this;
         }
     });
     //-----------
-    //================
-
 
     //===domReady
     extend(S, {
@@ -844,5 +901,5 @@
 
     root.S = S;
     !root.$ && (root.$ = S);
-
+    
 })();

@@ -37,24 +37,24 @@
 
 		            return promise.promise;
 		        };
-
 		      
 
 				S.whenAll([bb(),cc()]).then(function(res){
 					console.log(res);
 				});
 
-
+				S("#zz").val(11);
 			});
 
 
 		</script>
 	</head>
 	<body>
+		<input type="text" id='zz' />
 		<ul id="uu" class="a">
 			<li class="gm">1</li>
-			<li class="gm">2</li>
-			<li class="gm">3</li>
+			<li id="aa" class="gm">2</li>
+			<li class="gmaaa">3</li>
 			<li class="gm">4</li>
 			<li class="gm">5</li>
 		</ul>
