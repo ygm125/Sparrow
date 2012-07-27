@@ -307,6 +307,11 @@
                 countDown = promises.length,
                 result=[],
                 gloBraker=false;
+                
+            if(countDown === 0){
+                promise.resolve(promises);
+                return promise.promise;
+            }
 
             operate = operate || 'ALL';
 
