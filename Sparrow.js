@@ -265,20 +265,6 @@
         cache: {},
         uuid: 0,
         expando: "S" +(+new Date()+'').slice(-8),
-        on: w3c ? function(el, type, fn, phase) {
-            el.addEventListener(type, fn, !!phase);
-            return fn;
-        } : function(el, type, fn) {
-            el.attachEvent && el.attachEvent("on" + type, fn);
-            return fn;
-        },
-        off: w3c ? function(el, type, fn, phase) {
-            el.removeEventListener(type, fn || S.noop, !!phase);
-        } : function(el, type, fn) {
-            if (el.detachEvent) {
-                el.detachEvent("on" + type, fn || S.noop);
-            }
-        },
         deferred: function() {
             var list = [], self = function(fn) {
                 fn && fn.call && list.push(fn);
@@ -817,9 +803,8 @@
                     return;
                 type=S.special.hover[type];
             }
-            events = S.data( elem, type );
-
-            var match=quickDelegate.exec(selector);
+            var handlers = S.data( elem, 'events' )[type],
+                match=quickDelegate.exec(selector);
             if(match){
                 var tag=match[1],
                     cls=match[2],    
@@ -827,7 +812,7 @@
                 tar = bubbleTo(tar,elem,tag,cls);
                 if(!tar)return;
             }
-            for( var i = 0, handler; handler = events[i++]; ){
+            for( var i = 0, handler; handler = handlers[i++]; ){
                 if( handler.call(elem, event,tar) === false ){
                     event.preventDefault();
                     event.stopPropagation();
@@ -889,6 +874,51 @@
         }
     }
 
+    S._add=w3c ? function(el, type, fn, phase) {
+            el.addEventListener(type, fn, !!phase);
+            return fn;
+        } : function(el, type, fn) {
+            el.attachEvent && el.attachEvent("on" + type, fn);
+            return fn;
+        }
+
+    S._remove=w3c ? function(el, type, fn, phase) {
+            el.removeEventListener(type, fn || S.noop, !!phase);
+        } : function(el, type, fn) {
+            if (el.detachEvent) {
+                el.detachEvent("on" + type, fn || S.noop);
+            }
+        }
+
+    S.add=function(elem, type, fn,selector){
+        var events = S.data(elem, 'events') || (S.data(elem, 'events', {}),S.data(elem, 'events')),
+            handlers= events[type]||(events[type]=[]);
+            handlers.push(handler);
+            if(handlers.length === 1 ){
+                var eventHandler = S.eventHandler( elem , selector );
+                    events[type+'Handler']=eventHandler;
+                    if(type in S.special.hover&& w3c ){
+                        S._add(elem,S.special.hover[type], fn);
+                    }else{
+                        S._add(elem,type,fn);
+                    }
+            }
+    }
+
+    S.remove=function(elem, type){
+        var events = S.data(elem, 'events');
+            if(!events) return;
+            if(!type){
+                S.each(events,function(type){
+                    S._remove(elem,type,events[type+'Handler']);
+                })
+                S.removeData(elem,'events');
+            }else{
+                S._remove(elem,type,events[type+'Handler']);
+                delete events[type];
+            }
+    }
+
     extend(S.fn, {
         data:function(name,value){
             return S.access(this, function( elem, name, value ) {
@@ -902,23 +932,14 @@
         },
         on:function(type,handler,selector) {
             return this.each(function(i,elem){
-                var events = S.data(elem, type) || (S.data(elem, type, []),S.data(elem, type));
-                events.push(handler);
-                if(events.length === 1 ){
-                    var eventHandler = S.eventHandler( elem , selector );
-                    S.data( elem, type + 'Handler', eventHandler );
-                    if(type in S.special.hover&& w3c ){
-                        S.on( elem, S.special.hover[type], eventHandler);
-                    }else{
-                        S.on( elem, type, eventHandler);
-                    }
-                }
+               S.add(elem,type,handler,selector);
             });
         },
-        // one:function(){
-        // },
-        off:function(){
-
+        // one:function(){},
+        off:function(type){
+            return this.each(function(i,elem){
+                S.remove(elem,type);
+            });
         },
         bind:function(type,handler){
             return this.on(type,handler);
@@ -936,9 +957,7 @@
             // body...
         },
         hover:function(fn,fo) {
-           fn=fn||S.noop;
-           fo=fo||S.noop;
-           return this.on('mouseenter',fn).on('mouseleave',fo);
+           return this.on('mouseenter',fn || S.noop).on('mouseleave',fo || S.noop);
         }
     });
 
