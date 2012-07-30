@@ -6,6 +6,7 @@
         class2type = {},
         quickID = /#([\w\-]+)$/,
         quickExpr = /^(?:[^<]*(<[\w\W]+>)[^>]*$|(?:#([\w-]+))?\s*([\w-]+|\*)?\.?([\w-]+)?$)/,
+        quickDelegate=/^(\w+)?\.?(\w+)?$/,
         rtrim = /(^\s*)|(\s*$)/g,
         rcamelCase = /-([a-z])/ig,
 
@@ -784,6 +785,28 @@
         return event;
     };
 
+    var bubbleTo=function(el,endEl,tag,cls) {
+        var rel;
+        if(el===endEl){
+            return null;
+        }
+        if(cls){
+            if(S(el).hasClass(cls)){
+               return el;
+            }else{
+               rel=bubbleTo(el.parentNode,endEl,null,cls);
+            }
+        }
+        if(tag){
+            if(el.tagName.toLowerCase()===tag.toLowerCase()){
+               return rel || el;
+            }else{
+               rel=bubbleTo(el.parentNode,endEl,tag,null);
+            }
+        }
+        return rel;
+    }
+
     S.eventHandler= function( elem,selector){
         return function( event ){
             event = S.fixEvent( event);
@@ -795,20 +818,17 @@
                 type=S.special.hover[type];
             }
             events = S.data( elem, type );
-            if(selector){//先简单实现
-                var t=event.target;
-                if(selector.indexOf('.')!=-1){
-                    if(t.className.indexOf(selector)!=-1){
-                        elem=t;
-                    }
-                }else{
-                    if(t.tagName.toLowerCase()===selector){
-                        elem=t;
-                    }
-                }
+
+            var match=quickDelegate.exec(selector);
+            if(match){
+                var tag=match[1],
+                    cls=match[2],    
+                    tar=event.target;
+                tar = bubbleTo(tar,elem,tag,cls);
+                if(!tar)return;
             }
             for( var i = 0, handler; handler = events[i++]; ){
-                if( handler.call(elem, event) === false ){
+                if( handler.call(elem, event,tar) === false ){
                     event.preventDefault();
                     event.stopPropagation();
                 }
@@ -895,9 +915,8 @@
                 }
             });
         },
-        one:function(){
-
-        },
+        // one:function(){
+        // },
         off:function(){
 
         },
@@ -907,7 +926,7 @@
         unbind:function(type,handler){
             return this.off(type,handler);
         },
-        delegate:function(type,handler,selector) {
+        delegate:function(selector,type,handler) {
             return this.on(type,handler,selector);
         },
         undelegate:function() {
@@ -917,6 +936,8 @@
             // body...
         },
         hover:function(fn,fo) {
+           fn=fn||S.noop;
+           fo=fo||S.noop;
            return this.on('mouseenter',fn).on('mouseleave',fo);
         }
     });
