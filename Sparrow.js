@@ -928,7 +928,7 @@
             }
     }
 
-    S.fireEvent=document.createEventObject:function(el,type){
+    S.fireEvent=document.createEventObject?function(el,type){
                     var evt = document.createEventObject();
                     el.fireEvent('on'+type,evt)
                 }:function(el,type){
