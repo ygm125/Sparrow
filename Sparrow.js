@@ -500,10 +500,6 @@
             getSetAttribute: div.className !== "t"
         }
 
-        if(S.browser.msie){
-            support.innerText=true;
-        }
-
         return support;
     })();
     //---------------------
@@ -803,17 +799,22 @@
                     return;
                 type=S.special.hover[type];
             }
-            var handlers = S.data( elem, 'events' )[type],
-                match=quickDelegate.exec(selector);
-            if(match){
-                var tag=match[1],
-                    cls=match[2],    
-                    tar=event.target;
-                tar = bubbleTo(tar,elem,tag,cls);
-                if(!tar)return;
+            var handlers = S.data( elem, 'events' )[type];
+            if(handlers.undelegate&&selector in handlers.undelegate)//删除委托
+                return;
+            if(selector){
+                var match=quickDelegate.exec(selector);
+                if(match){
+                    var tag=match[1],
+                        cls=match[2],    
+                        tar=event.target;
+                    tar = bubbleTo(tar,elem,tag,cls);
+                    if(!tar)return;
+                    //event.delegateSource = elem;
+                }
             }
             for( var i = 0, handler; handler = handlers[i++]; ){
-                if( handler.call(elem, event,tar) === false ){
+                if( handler.call(tar||elem, event) === false ){
                     event.preventDefault();
                     event.stopPropagation();
                 }
@@ -893,19 +894,19 @@
     S.add=function(elem, type, fn,selector){
         var events = S.data(elem, 'events') || (S.data(elem, 'events', {}),S.data(elem, 'events')),
             handlers= events[type]||(events[type]=[]);
-            handlers.push(handler);
+            handlers.push(fn);
             if(handlers.length === 1 ){
                 var eventHandler = S.eventHandler( elem , selector );
                     events[type+'Handler']=eventHandler;
                     if(type in S.special.hover&& w3c ){
-                        S._add(elem,S.special.hover[type], fn);
+                        S._add(elem,S.special.hover[type], eventHandler);
                     }else{
-                        S._add(elem,type,fn);
+                        S._add(elem,type,eventHandler);
                     }
             }
     }
 
-    S.remove=function(elem, type){
+    S.remove=function(elem, type,selector){
         var events = S.data(elem, 'events');
             if(!events) return;
             if(!type){
@@ -914,10 +915,27 @@
                 })
                 S.removeData(elem,'events');
             }else{
+                if(selector){
+                    var undelegate=events[type]['undelegate']||(events[type]['undelegate']={});
+                    if(!(selector in undelegate))
+                        undelegate[selector]=selector;
+                }
                 S._remove(elem,type,events[type+'Handler']);
                 delete events[type];
+                if(S.isEmptyObject(events)){
+                    S.removeData(elem,'events');
+                }
             }
     }
+
+    S.fireEvent=document.createEventObject:function(el,type){
+                    var evt = document.createEventObject();
+                    el.fireEvent('on'+type,evt)
+                }:function(el,type){
+                    var evt = document.createEvent( 'HTMLEvents' );
+                    evt.initEvent(type, true, true);
+                    el.dispatchEvent(evt);
+                };
 
     extend(S.fn, {
         data:function(name,value){
@@ -936,36 +954,42 @@
             });
         },
         // one:function(){},
-        off:function(type){
+        off:function(type,selector){//暂时不提供删除单个handler的功能
             return this.each(function(i,elem){
-                S.remove(elem,type);
+                S.remove(elem,type,selector);
             });
         },
         bind:function(type,handler){
             return this.on(type,handler);
         },
-        unbind:function(type,handler){
-            return this.off(type,handler);
+        unbind:function(type){
+            return this.off(type);
         },
         delegate:function(selector,type,handler) {
             return this.on(type,handler,selector);
         },
-        undelegate:function() {
-            // body...
+        undelegate:function(type,selector) {
+            if(!selector){
+               return this.off(type);
+            }else{
+               return this.off(type,selector);
+            }          
         },
-        trigger:function() {
-            // body...
+        trigger:function(type){
+            return this.each(function(i,el){
+                S.fireEvent(el,type);
+            });
         },
         hover:function(fn,fo) {
            return this.on('mouseenter',fn || S.noop).on('mouseleave',fo || S.noop);
         }
     });
-
+    //focusin focusout没有实现 
     S.each(("blur focus focusin focusout load resize scroll unload click dblclick " +
         "mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave " +
         "change select submit keydown keypress keyup error contextmenu").split(" "), function( i, name ) {
-        S.fn[ name ] = function(fn) {
-            return arguments.length > 0 ? this.on( name, fn ) : this.trigger( name );
+        S.fn[name] = function(fn) {
+            return arguments.length > 0 ? this.on(name,fn) : this.trigger(name);
         };
     });
     //------------------
@@ -1070,7 +1094,7 @@
             }
         },
         text:function(text){
-            var name=S.support.innerText?'innerText':'textContent';
+            var name=S.browser.msie?'innerText':'textContent';
             if(text){
                 return this.each(function(){
                     this[name]=text;
