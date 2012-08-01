@@ -50,7 +50,7 @@
 
 		</script>
 	</head>
-	<body>
+	<body><div id="aa"></div>
 		<input type="text" id='zz' />
 		<ul id="uu" class="a">
 			<li class="gm">1</li>
@@ -60,5 +60,20 @@
 			<li class="gm">5</li>
 		</ul>
 		<div>asdasdasd <button>asdasd</button></div>
+
+		 <script type="text/tmpl" id="tmpl-demo">
+ * <ol title="<%=name%>">
+ *  <% for (var i = 0, l = list.length; i < l; i ++) { %>
+ *      <li><%=list[i]  %></li>
+ *  <% } %>
+ * </ol>
+ * </script>
+ <script type="text/javascript">
+
+	S("#aa").append(S.tmpl('#tmpl-demo', {name: 'demo data', list: [202, 96, 133, 134]}));
+
+
+ </script>
+
 	</body>
 </html>

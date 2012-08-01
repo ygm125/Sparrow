@@ -174,6 +174,18 @@
                 }
             };
             return this;
+        },
+        siblings:function(){
+            var r = [];
+            this.each(function(i,el){
+                var n=(el.parentNode || {}).firstChild;
+                for ( ; n; n = n.nextSibling ) {
+                    if ( n.nodeType === 1 && n !== el ) {
+                        r.push(n);
+                    }
+                }
+            });
+            return S(r);
         }
     }
 
@@ -704,7 +716,31 @@
 
         return promise.promise;
     };
-
+  
+    S.tmpl = (function (cache, SS) {
+    return function (str, data) {
+        var fn = !/\s/.test(str)
+        ? cache[str] = cache[str] || S.tmpl(S(str).html())
+        : function (data) {
+            var i, variable = [SS], value = [[]];
+            for (i in data) {
+                variable.push(i);
+                value.push(data[i]);
+            };
+            return (new Function(variable, fn.SS)).apply(data, value).join("");
+        };
+        fn.SS = fn.SS || SS + ".push('" 
+        + str.replace(/\\/g, "\\\\")
+             .replace(/[\r\t\n]/g, " ")
+             .split("<%").join("\t")
+             .replace(/((^|%>)[^\t]*)'/g, "$1\r")
+             .replace(/\t=(.*?)%>/g, "',$1,'")
+             .split("\t").join("');")
+             .split("%>").join(SS + ".push('")
+             .split("\r").join("\\'")
+        + "');return " + SS;
+        return data ? fn(data) : fn;
+    }})({}, 'SS' + (+ new Date));
     //----------------------
     //==============Event&&Data
      (function(S) {
