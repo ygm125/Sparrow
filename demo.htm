@@ -44,13 +44,12 @@
 				// S("#uu").delegate('.gm','click',function(){
 				// 	alert(1);
 				// });
-
 				
 			});
 
 		</script>
 	</head>
-	<body><div id="aa"></div>
+	<body>
 		<input type="text" id='zz' />
 		<ul id="uu" class="a">
 			<li class="gm">1</li>
@@ -61,19 +60,10 @@
 		</ul>
 		<div>asdasdasd <button>asdasd</button></div>
 
-		 <script type="text/tmpl" id="tmpl-demo">
- * <ol title="<%=name%>">
- *  <% for (var i = 0, l = list.length; i < l; i ++) { %>
- *      <li><%=list[i]  %></li>
- *  <% } %>
- * </ol>
- * </script>
- <script type="text/javascript">
+		 <script type="text/javascript">
+		 	//S.load('a.js');
 
-	S("#aa").append(S.tmpl('#tmpl-demo', {name: 'demo data', list: [202, 96, 133, 134]}));
-
-
- </script>
+		 </script>
 
 	</body>
 </html>

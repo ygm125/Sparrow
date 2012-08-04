@@ -185,7 +185,49 @@
                     }
                 }
             });
-            return S(r);
+            r=S(r);
+            r.previousThis=this;
+            return r;
+        },
+        parent:function(){
+            var r = [];
+            r[0]=this[0].parentNode;
+            r=S(r);
+            r.previousThis=this;
+            return r;
+        },
+        children:function(b){
+           b = b ?'childNodes':'children';
+           var r=[];
+           S.merge(r,this[0][b]);
+           r=S(r);
+           r.previousThis=this;
+           return r;
+        },
+        prev:function(){
+            var r = [],
+                pv=this[0].previousSibling;
+            if (pv.nodeType !== 1) {
+                pv=pv.previousSibling;
+            }
+            r[0]=pv;
+            r=S(r);
+            r.previousThis=this;
+            return r;
+        },
+        next:function(){
+            var r = [],
+                nx=this[0].nextSibling;
+            if (nx.nodeType !== 1) {
+                nx=nx.nextSibling;
+            }
+            r[0]=nx;
+            r=S(r);
+            r.previousThis=this;
+            return r;
+        },
+        end:function(){
+            return this.previousThis||this.context||document;
         }
     }
 
@@ -741,6 +783,43 @@
         + "');return " + SS;
         return data ? fn(data) : fn;
     }})({}, 'SS' + (+ new Date));
+    //========================
+    var loading={},loaded={};
+    S.load=function(url, callback, options) {
+            if(loaded[url]) {
+                if(callback) {
+                   callback();
+                }
+                return;
+            }
+            options = options || {};
+            var script = document.createElement('script'),
+                done = false;
+            script.src = url;
+            script.async='async';
+            if (options.charset) {
+                script.charset = options.charset;
+            }
+            script.onerror = script.onload = script.onreadystatechange = function() {
+                if (!done && (!this.readyState || this.readyState == "loaded" || this.readyState == "complete")) {
+                    done = true;
+                    if (callback) {
+                        callback();
+                    }
+                    script.onerror = script.onload = script.onreadystatechange = null;
+                    HEAD.removeChild(script);
+                }
+            };
+            HEAD.insertBefore(script, HEAD.firstChild);
+    }
+
+    S.require=function(deps, callback, errback){
+     
+    }
+
+    S.define=function(name, deps, callback){
+      
+    }
     //----------------------
     //==============Event&&Data
      (function(S) {
