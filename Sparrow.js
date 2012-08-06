@@ -784,14 +784,18 @@
         return data ? fn(data) : fn;
     }})({}, 'SS' + (+ new Date));
     //========================
-    var loading={},loaded={};
+
+    var modules ={},callbacks =[],dn =0,cn =0;
+
     S.load=function(url, callback, options) {
-            if(loaded[url]) {
-                if(callback) {
-                   callback();
-                }
+
+            if(url in modules){
                 return;
             }
+
+            modules[url]={};
+            dn++;
+
             options = options || {};
             var script = document.createElement('script'),
                 done = false;
@@ -803,6 +807,31 @@
             script.onerror = script.onload = script.onreadystatechange = function() {
                 if (!done && (!this.readyState || this.readyState == "loaded" || this.readyState == "complete")) {
                     done = true;
+
+                    modules[url]['state']=2;
+                    cn++;
+
+                    var o=callbacks[callbacks.length - 2],deps=o.deps;
+                    deps['name'] = url;
+
+                    var o1=callbacks[callbacks.length - 1],deps1=o1.deps;
+                    if(!deps1.length){
+                        modules[url]['rtn']=o1.callback.call(o1);
+                        callbacks.pop();
+                    }
+                    console.log(o);
+                    if(cn===dn){
+                        console.log(callbacks);
+                        for (var i = callbacks.length-1; i >= 0; i--) {
+                            var obj=callbacks[i],deps=obj.deps;
+                            if(deps.length){
+                                for (var j = 0; j < deps.length; j++) {
+                                    deps[j]=modules[deps[j]]['rtn'];
+                                };
+                                modules[deps['name']]['rtn']=obj.callback.apply(obj,deps);
+                            }
+                        };
+                    }
                     if (callback) {
                         callback();
                     }
@@ -813,13 +842,16 @@
             HEAD.insertBefore(script, HEAD.firstChild);
     }
 
-    S.require=function(deps, callback, errback){
-     
+    S.require=function(deps, callback){
+        deps = deps || [];
+        callbacks.push({"deps":deps,'callback':callback});
+        for (var i = deps.length - 1; i >= 0; i--) {
+            S.load(deps[i]);
+        };
     }
 
-    S.define=function(name, deps, callback){
-      
-    }
+    S.define=S.require;
+
     //----------------------
     //==============Event&&Data
      (function(S) {

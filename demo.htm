@@ -11,7 +11,7 @@
 
 
 			$(function(){
-			
+
 				var bb = function(callback, errback) {
 
 		            var promise = S.Promise();
@@ -61,7 +61,11 @@
 		<div>asdasdasd <button>asdasd</button></div>
 
 		 <script type="text/javascript">
-		 	//S.load('a.js');
+
+		 	S.require(['a.js'],function(a){
+
+		 		console.log('ok');
+		 	})
 
 		 </script>
 
