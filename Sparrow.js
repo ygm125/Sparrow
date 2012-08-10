@@ -783,76 +783,53 @@
         + "');return " + SS;
         return data ? fn(data) : fn;
     }})({}, 'SS' + (+ new Date));
-    //========================
 
-    var modules ={},callbacks =[],dn =0,cn =0;
-
-    S.load=function(url, callback, options) {
-
-            if(url in modules){
-                return;
-            }
-
-            modules[url]={};
-            dn++;
-
+    S.load=function(url,options) {
+        var promise=new Promise(),t = url.split('?')[0].exec(/[^\.]+$/),jc;
+        if(t==='js'){
             options = options || {};
-            var script = document.createElement('script'),
-                done = false;
-            script.src = url;
-            script.async='async';
+            jc = document.createElement('script'),done = false;
+            jc.src = url;
             if (options.charset) {
-                script.charset = options.charset;
+                jc.charset = options.charset;
             }
-            script.onerror = script.onload = script.onreadystatechange = function() {
+            jc.onerror = jc.onload = jc.onreadystatechange = function() {
                 if (!done && (!this.readyState || this.readyState == "loaded" || this.readyState == "complete")) {
                     done = true;
-
-                    modules[url]['state']=2;
-                    cn++;
-
-                    var o=callbacks[callbacks.length - 2],deps=o.deps;
-                    deps['name'] = url;
-
-                    var o1=callbacks[callbacks.length - 1],deps1=o1.deps;
-                    if(!deps1.length){
-                        modules[url]['rtn']=o1.callback.call(o1);
-                        callbacks.pop();
-                    }
-                    console.log(o);
-                    if(cn===dn){
-                        console.log(callbacks);
-                        for (var i = callbacks.length-1; i >= 0; i--) {
-                            var obj=callbacks[i],deps=obj.deps;
-                            if(deps.length){
-                                for (var j = 0; j < deps.length; j++) {
-                                    deps[j]=modules[deps[j]]['rtn'];
-                                };
-                                modules[deps['name']]['rtn']=obj.callback.apply(obj,deps);
-                            }
-                        };
-                    }
-                    if (callback) {
-                        callback();
-                    }
-                    script.onerror = script.onload = script.onreadystatechange = null;
-                    HEAD.removeChild(script);
+                    promise.resolve();
+                    jc.onerror = jc.onload = jc.onreadystatechange = null;
+                    HEAD.removeChild(jc);
                 }
             };
-            HEAD.insertBefore(script, HEAD.firstChild);
-    }
+        }else if(t==='css'){
+            jc = document.createElement('link');
+            jc.rel = 'stylesheet';
+            jc.type = 'text/css';
+            jc.href = url;
+            setTimeout(function(){
+                promise.resolve();
+            },1);
+        }
+        HEAD.insertBefore(jc, HEAD.firstChild);
+        return promise.promise;
+    };
 
-    S.require=function(deps, callback){
-        deps = deps || [];
-        callbacks.push({"deps":deps,'callback':callback});
-        for (var i = deps.length - 1; i >= 0; i--) {
-            S.load(deps[i]);
-        };
-    }
-
-    S.define=S.require;
-
-    //----------------------
+    S.loadJsonp =(function(){
+            var seq = new Date() * 1;
+            return function (url,callback,options){
+                options = options || {};
+                var funName = "SJsonp" + seq++,
+                    cb = options.cb || 'callback';
+                root[funName] = function (data){
+                    if (callback) {
+                        callback(data);
+                    }
+                    root[funName] = null;     
+                };
+                url += (/\?/.test( url ) ? "&" : "?") + cb +'=' + funName;
+                return S.load(url,options);
+            };
+    }());
     //==============Event&&Data
      (function(S) {
         var topics = {},
@@ -1320,5 +1297,5 @@
 
     root.S = S;
     !root.$ && (root.$ = S);
-    
+
 })();
