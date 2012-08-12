@@ -3,7 +3,7 @@
 	<head>
 		<title>test</title>
 
-		<script src="other/jquery.min.js"></script>
+		<!--<script src="other/jquery.min.js"></script>-->
 		
 		<script type="text/javascript" src="Sparrow.js"></script>
 
@@ -61,7 +61,11 @@
 		<div>asdasdasd <button>asdasd</button></div>
 
 		 <script type="text/javascript">
-		 	
+
+		 	S.require('a',['f'],function(a,f){
+		 		S.log(a);
+		 		S.log(S._modules);
+		 	})
 
 		 </script>
 

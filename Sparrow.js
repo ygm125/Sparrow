@@ -878,6 +878,8 @@
 
     var modules={},returns=[];
 
+    S._modules = modules;
+
     S.require=function(name,deps,callback,promise){
         if(S.isFunction(deps)){
             callback=deps;
@@ -890,28 +892,27 @@
                         modules[name]['state']=2;
                         promise.resolve(modules[name]['rtn']=callback.apply(S,res));
                     }else{
-                       S.rload(name).then(function(){
-                            modules[name]['rtn']=callback.apply(S,res);
-                            modules[name]['state']=2;
-                       });
+                        S.rload(name).then(function(o){
+                            res.unshift(o);
+                            callback.apply(S,res)
+                        });
                     }
                 });
         }else{
             if(modules[name]){
-                modules[name]['rtn']=callback();
+                modules[name]['rtn']=callback.call(S);
                 modules[name]['state']=2;
                 if(promise){
                    promise.resolve(modules[name]['rtn']);
                 }
             }else{
-                S.rload(name).then(function(){
-                    modules[name]['rtn']=callback.apply(S);
-                    modules[name]['state']=2;
+                S.rload(name).then(function(o){
+                    callback.call(S,o);
                 });
             }
         }
     };
-
+    
     S.define=function(deps,callback){
         if(S.isFunction(deps)){
             callback=deps;
@@ -919,7 +920,6 @@
         }
         returns.unshift({'deps':deps,'callback':callback});
     };
-
     //==============Event&&Data
      (function(S) {
         var topics = {},

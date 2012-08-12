@@ -1,0 +1,87 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+
+<html>
+
+<head>
+
+<base href="http://dev.qwrap.com/resource/js/_tools/smokingtest/_examples/"></base>
+
+<title>SmokingTest</title>
+
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+<link href="../../../../js/apps/assets/base.css" rel="stylesheet" type="text/css" media="screen"/>
+
+<link href="../assets/page.css" rel="stylesheet" type="text/css" media="screen"/>
+
+<script>
+
+window.$CONFIG = {
+
+	bigpipe:"true",
+
+	jsPath:"http://js.t.sinajs.cn/t4/",
+
+    cssPath:"http://img.t.sinajs.cn/t4/"
+
+};
+
+</script>
+
+<script type="text/javascript" src="http://js.t.sinajs.cn/t4/home/js/base.js?version=3c017d092cab8939"></script>
+
+<script type="text/javascript" src="../SmokingTest.js"></script>
+
+</head>
+
+
+
+<body>
+
+<div id=doc3>
+
+	<h1 class="page-h1">冒烟测试---For STK. （建议：Firefox浏览本网页，function则会自动格式化） </h1>
+
+	<div id=hd>
+
+		<!-- keep it -->
+
+	</div>
+
+	<div id="bd" >
+
+		<div class="section-ctn" id="ST_ctn">
+
+		</div>
+
+	</div>
+
+	<div id="ft">
+
+		QW
+
+	</div>
+
+</div>
+
+
+
+<script>
+
+	SmokingTest.init(document.getElementById("ST_ctn"),["STK","$CONFIG"]);
+
+	document.getElementById('ST_ctn').onclick = function(e){ //本段代码屏蔽STK 在$CONFIG.bigpipe状态下的body监控。该在ie下会有异常。
+
+		e = e || window.event;
+
+		e.cancelBubble = true;
+
+	}
+
+</script>
+
+</body>
+
+</html>
+

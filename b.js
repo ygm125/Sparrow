@@ -1,4 +1,4 @@
-S.define(function(){
+S.define(['d'],function(d){
 	
-	return 'b-YGM';
+	return 'bbb'+d;
 });

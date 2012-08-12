@@ -1,4 +1,4 @@
 S.define(function(){
 	
-	return 'ccc';
+	return 'fff';
 });
