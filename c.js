@@ -1,3 +1,3 @@
-S.define([],function(){
+S.define(function(){
 	return 'c';
 });

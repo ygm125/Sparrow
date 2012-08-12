@@ -664,7 +664,9 @@
                     // };
                     promise.reject({'err':value,'errNum':key});
                 }else{
+
                     result[key]=value;
+                        
                     if (operate==='ALL' && --countDown === 0) {
                        promise.resolve(result);
                     }
@@ -785,30 +787,29 @@
     }})({}, 'SS' + (+ new Date));
 
     S.load=function(url,options) {
-        var promise=new Promise(),t = url.split('?')[0].exec(/[^\.]+$/),jc;
-        if(t==='js'){
+        var promise=new Promise(),t =/[^\.]+$/.exec(url.split('?')[0]),jc;
+        if(t=='js'){
             options = options || {};
-            jc = document.createElement('script'),done = false;
+            jc = document.createElement('script');
             jc.src = url;
+            jc.async=true;
             if (options.charset) {
                 jc.charset = options.charset;
             }
             jc.onerror = jc.onload = jc.onreadystatechange = function() {
-                if (!done && (!this.readyState || this.readyState == "loaded" || this.readyState == "complete")) {
-                    done = true;
+                if (!this.readyState || this.readyState == "loaded" || this.readyState == "complete") {
                     promise.resolve();
                     jc.onerror = jc.onload = jc.onreadystatechange = null;
                     HEAD.removeChild(jc);
                 }
             };
-        }else if(t==='css'){
+        }else if(t=='css'){
             jc = document.createElement('link');
             jc.rel = 'stylesheet';
             jc.type = 'text/css';
             jc.href = url;
-            setTimeout(function(){
-                promise.resolve();
-            },1);
+            //setTimeout(function(){},1);
+            promise.resolve();
         }
         HEAD.insertBefore(jc, HEAD.firstChild);
         return promise.promise;
@@ -830,6 +831,95 @@
                 return S.load(url,options);
             };
     }());
+
+    S.rload=function(url,options) {
+        var promise=new Promise();
+        /.js$/.test(url) ? "" : (url+='.js');
+        if(url in modules){
+            (function doCheck() {
+                if(modules[url]['state']===2){
+                        promise.resolve(modules[url]['rtn']);
+                }else{
+                        setTimeout(doCheck, 20);
+                }
+            })();
+            return promise.promise;
+        }
+        modules[url]={ 'state': 1 };
+        options = options || {};
+
+        var jc = document.createElement('script');
+            jc.src = url;
+            jc.async=true;
+            if (options.charset) {
+                jc.charset = options.charset;
+            }
+            jc.onerror = jc.onload = jc.onreadystatechange = function() {
+                if (!this.readyState || this.readyState == "loaded" || this.readyState == "complete") {
+
+                    var obj=returns.shift(),deps=obj.deps,callback=obj.callback;
+                    S.require(url,deps,callback,promise);
+
+                    jc.onerror = jc.onload = jc.onreadystatechange = null;
+                    HEAD.removeChild(jc);
+                }
+            };
+        HEAD.insertBefore(jc, HEAD.firstChild);
+        return promise.promise;
+    }
+
+
+    S.rloadAll=function(arr){
+            S.each(arr,function(i,v){
+                    arr[i]=S.rload(v);
+            });
+            return S.whenAll(arr);
+    };
+
+    var modules={},returns=[];
+
+    S.require=function(name,deps,callback,promise){
+        if(S.isFunction(deps)){
+            callback=deps;
+            deps=[];
+        }
+        /.js$/.test(name) ? "" : (name+='.js');
+        if(S.isArray(deps)&&deps.length){
+                S.rloadAll(deps).then(function(res){
+                   if(promise){
+                        modules[name]['state']=2;
+                        promise.resolve(modules[name]['rtn']=callback.apply(S,res));
+                    }else{
+                       S.rload(name).then(function(){
+                            modules[name]['rtn']=callback.apply(S,res);
+                            modules[name]['state']=2;
+                       });
+                    }
+                });
+        }else{
+            if(modules[name]){
+                modules[name]['rtn']=callback();
+                modules[name]['state']=2;
+                if(promise){
+                   promise.resolve(modules[name]['rtn']);
+                }
+            }else{
+                S.rload(name).then(function(){
+                    modules[name]['rtn']=callback.apply(S);
+                    modules[name]['state']=2;
+                });
+            }
+        }
+    };
+
+    S.define=function(deps,callback){
+        if(S.isFunction(deps)){
+            callback=deps;
+            deps=[];
+        }
+        returns.unshift({'deps':deps,'callback':callback});
+    };
+
     //==============Event&&Data
      (function(S) {
         var topics = {},
