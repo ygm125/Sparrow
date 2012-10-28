@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>test</title>
+
+		<script type="text/javascript" src="Sparrow.js"></script>
+		<style type="text/css">
+
+		</style>
+	</head>
+	<body>
+		 <input type="text" id="test"  />
+		
+		 <script type="text/javascript">
+
+		
+			alert(null===null);
+
+		 	$.fn.autocomplete=function(options){
+		 		var def={
+		 			timer:500,
+		 			data:null,
+		 			name:'key',
+		 			url:null,
+		 			param:null,
+		 			width:200
+		 		};
+		 		this.options=options=$.extend(def,options||{});
+		 		var aid=+(new Date);
+		 		$('body').append('<div id="'+aid+'" style="position:absolute;left:0;top:0;display:none;background:#fff;width:'+options.width+'px;zIndex:1000;text-align:center;border:1px solid gray"></div>');
+		 		$('#'+aid).delegate('div','click',function(e){
+		 			$('#'+aid).hide();
+		 		});
+
+		 		$(this).keyup(S.debounce(options.timer,function(){
+		 			var val=$.trim(this.value),ret=[];
+		 			if(!val){
+		 				$('#'+aid).hide();
+		 				return
+		 			};
+		 			if(options.data){
+		 				$.each(options.data,function(i,v){
+		 					if(v[def['name']].indexOf(val)>-1){
+		 						ret.push(v);
+		 					}
+		 				});
+		 			}else{
+		 				$.ajax(options.url,options.param).done(function(data){
+		 					ret=data;
+		 				});
+		 			}
+		 			if(ret.length){
+		 				var htm='',p=$(this).position();
+		 				$.each(ret,function(i,v){
+		 					htm+='<div >'+v[def['name']]+'</div>'
+		 				});
+		 				$('#'+aid).css({'left':p.left+'px','top':p.top+25+'px','display':'block'}).html(htm);
+		 			}else{
+		 				$('#'+aid).hide();
+		 			}
+		 		},true));
+
+				return this;
+		 	};
+
+			var data = [
+				{key:'aa1'},
+				{key:'aa2'},
+				{key:'aa3'},
+				{key:'bb'},
+				{key:'bb1'}
+			];
+
+			$("#test").autocomplete({data:data});
+
+		 </script>
+
+	</body>
+</html>

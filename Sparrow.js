@@ -121,8 +121,8 @@
                         this[0] = elem;
                         this.context = document;
                         this.selector = selector;
-                        return this;
                     }
+                    return this;
                 } else if (match = quickExpr.exec(selector)) {
                     if (match) {
                         if (match[1]) {
@@ -157,6 +157,7 @@
             return S.merge(this, ret || selector);
         },
         length: 0,
+        splice: core_splice,
         toArray: function() {
             return core_slice.call(this);
         },
@@ -490,6 +491,21 @@
             };
             return { "left": left, "top": top, "right": right, "bottom": bottom };
         },
+        rect: function(node){
+            var left = 0, top = 0, right = 0, bottom = 0;
+            //ie8的getBoundingClientRect获取不准确
+            if ( !node.getBoundingClientRect) {
+                var n = node;
+                while (n) { left += n.offsetLeft, top += n.offsetTop; n = n.offsetParent; };
+                right = left + node.offsetWidth; bottom = top + node.offsetHeight;
+            } else {
+                var rect = node.getBoundingClientRect();
+                left = right = S.getScrollLeft(node); top = bottom = S.getScrollTop(node);
+                left += rect.left; right += rect.right;
+                top += rect.top; bottom += rect.bottom;
+            };
+            return { "left": left, "top": top, "right": right, "bottom": bottom };
+        },
         position: function(elem) {
             var rect = S.rect(elem), sLeft = S.getScrollLeft(elem), sTop = S.getScrollTop(elem);
             rect.left -= sLeft; rect.right -= sLeft;
@@ -497,7 +513,44 @@
             return rect;
         },
         contains: document.defaultView ? function (a, b) { return !!( a.compareDocumentPosition(b) & 16 ); }
-        : function (a, b) { return a != b && a.contains(b); }
+        : function (a, b) { return a != b && a.contains(b); },
+        /*http://oldenburgs.org/playground/autocomplete/
+         http://www.cnblogs.com/ambar/archive/2011/10/08/throttle-and-debounce.html
+         https://gist.github.com/1306893
+        在一连串调用中，如果我们throttle了一个函数，那么它会减少调用频率，
+        会把A调用之后的XXXms间的N个调用忽略掉，
+        然后再调用XXXms后的第一个调用，然后再忽略N个*/
+        throttle:  function(delay,action,tail,debounce) {
+            var last_call = 0, last_exec = 0, timer = null, curr, diff,
+            ctx, args, exec = function() {
+                last_exec = Date.now;
+                action.apply(ctx,args);
+            };
+            return function() {
+                ctx = this, args = arguments,
+                curr = Date.now, diff = curr - (debounce? last_call: last_exec) - delay;
+                clearTimeout(timer);
+                if(debounce){
+                    if(tail){
+                        timer = setTimeout(exec,delay);
+                    }else if(diff >= 0){
+                        exec();
+                    }
+                }else{
+                    if(diff >= 0){
+                        exec();
+                    }else if(tail){
+                        timer = setTimeout(exec,-diff);
+                    }
+                }
+                last_call = curr;
+            }
+        },
+        //是在一连串调用中，按delay把它们分成几组，每组只有开头或结果的那个调用被执行
+        //debounce比throttle执行的次数更少
+        debounce : function(idle,action,tail) {
+            return $.throttle(idle,action,tail,true);
+        }
     });
 
     if (!root.JSON) {
