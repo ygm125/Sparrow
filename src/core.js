@@ -1,9 +1,14 @@
-+function(){
+/*
+* ===========================================================
+* 核心模块一般不依赖任何模块
+* 只有在复杂选择器或dom元素创建时依赖selector或node模块
+* ===========================================================
+*/
+void function(){
     var root = this,
         document = root.document,
         readyList,
         rquickExpr = /^(?:[^#<]*(<[\w\W]+>)[^>]*|#([\w-]*))$/,
-        rword = /[^, ]+/g,
         class2type = {},
         core_toString = class2type.toString,
         core_slice = Array.prototype.slice,
@@ -78,7 +83,9 @@
 
     S.fn.init.prototype = S.fn;
 
-    "Boolean,Number,String,Function,Array,Date,RegExp,Window,Document,Arguments,NodeList,XMLHttpRequest".replace(rword, function(name) {
+    S.rword = /[^, ]+/g;
+
+    "Boolean,Number,String,Function,Array,Date,RegExp,Window,Document,Arguments,NodeList,XMLHttpRequest".replace(S.rword, function(name) {
         class2type["[object " + name + "]"] = name.toLowerCase();
     });
 
@@ -96,14 +103,42 @@
             return target;
     }
 
+    S.each = S.fn.each = function(object, callback) {
+            var i = 0,
+                length, name;
+            if(typeof object === 'function') {
+                callback = object;
+                object = this;
+            }
+            length = object.length;
+            if(length) {
+                for(; i < length; i++) {
+                    if(callback.call(object[i], i, object[i], object) === false) {
+                        break;
+                    }
+                }
+            } else {
+                for(name in object) {
+                    if(callback.call(object[name], name, object[name], object) === false) {
+                        break;
+                    }
+                }
+            }
+            return object;
+    }
+
     S.extend(S,{
         log: function(s) {
             console && console.log(s);
         },
-        noop: function() {},
-        now: function() {
-            return +new Date();
+        guid : function( pre ){
+            return ( pre || 'S_' ) + 
+                ( +new Date() ) + 
+                ( Math.random() + '' ).slice( -8 );
         },
+        expando = S.guid(),
+        uuid:0,
+        noop: function() {},
         type: function(obj) {
             return obj == null ? String(obj) : class2type[core_toString.call(obj)] || "object";
         },
@@ -149,8 +184,26 @@
             }
             first.length = i;
             return first;
+        },
+        access: function(elems, fn, key, value, chainable) {
+            if(typeof key === "object") {
+                for(var i in key) {
+                    S.access(elems, fn, i, key[i], 1);
+                }
+                return elems;
+            } else {
+                if(value) {
+                    elems.each(function() {
+                        return fn(this, key, value);
+                    });
+                    if(!chainable) {
+                        return elems;
+                    }
+                } else {
+                    return fn(elems[0], key);
+                }
+            }
         }
-      
     });
 
 
@@ -283,6 +336,155 @@
         }
         return readyList.promise;
     }
+
+    S.when = function(promises, operate) {
+        var promise = S.Deferred(),
+            len = promises.length,
+            result = [],
+            gloBraker = false;
+
+        if(!len) {
+            promise.resolve(promises);
+            return promise.promise;
+        }
+
+        operate = operate || 'ALL';
+
+        S.each(promises, function(i, v) {
+            v.then(function(res) {
+                d(i, res);
+            }, function(err) {
+                d(i, err, 'err');
+            });
+        });
+
+        function d(key, value, state) {
+            if(gloBraker) return;
+            if('err' === state) {
+                gloBraker = true;
+                promise.reject({
+                    'err': value,
+                    'errNum': key
+                });
+            } else {
+                result[key] = value;
+                if(operate === 'ALL' && --len === 0) {
+                    promise.resolve(result);
+                }
+                if(operate === 'ANY') {
+                    gloBraker = true;
+                    promise.resolve(result);
+                }
+            }
+        }
+        return promise.promise;
+    }
+
+    S.whenAll = function(promises) {
+        return S.when(promises, 'ALL');
+    }
+
+    S.whenAny = function(promises) {
+        return S.when(promises, 'ANY');
+    }
+
+    ;(function(S){
+        var modules = {},
+            returns = [];
+            head = document.head || document.getElementsByTagName("head")[0],
+            load= function(url, options) {
+                var promise = S.Deferred();
+                /.js$/.test(url) ? "" : (url += '.js');
+                if(url in modules) {
+                    (function doCheck() {
+                        if(modules[url]['state'] === 2) {
+                            promise.resolve(modules[url]['rtn']);
+                        } else {
+                            setTimeout(doCheck, 20);
+                        }
+                    })();
+                    return promise.promise;
+                }
+                modules[url] = {
+                    'state': 1
+                };
+                options = options || {};
+
+                var jc = document.createElement('script');
+                jc.src = url;
+                jc.async = true;
+                if(options.charset) {
+                    jc.charset = options.charset;
+                }
+                jc.onerror = jc.onload = jc.onreadystatechange = function() {
+                    if(!this.readyState || this.readyState == "loaded" || this.readyState == "complete") {
+
+                        var obj = returns.shift(),
+                            deps = obj.deps,
+                            callback = obj.callback;
+                        S.require(url, deps, callback, promise);
+
+                        jc.onerror = jc.onload = jc.onreadystatechange = null;
+                        head.removeChild(jc);
+                    }
+                };
+                head.insertBefore(jc, head.firstChild);
+                return promise.promise;
+            },
+            loadAll=function(arr){
+                    S.each(arr,function(i,v){
+                            arr[i]=load(v);
+                    });
+                    return S.whenAll(arr);
+            };
+
+        root.require = S.require = function(name, deps, callback, promise) {
+            if(typeof deps === "function") {
+                callback = deps;
+                deps = [];
+            }
+            /.js$/.test(name) ? "" : (name += '.js');
+            if(S.type(deps) === "array" && deps.length) {
+                loadAll(deps).then(function(res) {
+                    if(promise) {
+                        modules[name]['state'] = 2;
+                        promise.resolve(modules[name]['rtn'] = callback.apply(S, res));
+                    } else {
+                        load(name).then(function(o) {
+                            res.unshift(o);
+                            callback.apply(S, res)
+                        });
+                    }
+                });
+            } else {
+                if(modules[name]) {
+                    modules[name]['rtn'] = callback.call(S);
+                    modules[name]['state'] = 2;
+                    if(promise) {
+                        promise.resolve(modules[name]['rtn']);
+                    }
+                } else {
+                    load(name).then(function(o) {
+                        callback.call(S, o);
+                    });
+                }
+            }
+        };
+
+        root.define = S.define = function(deps, callback) {
+            if(typeof deps === "function") {
+                callback = deps;
+                deps = [];
+            }
+            returns.unshift({
+                'deps': deps,
+                'callback': callback
+            });
+        };
+
+
+    })(S);
+     
 
     root.S = S;
     !root.$ && (root.$ = S);

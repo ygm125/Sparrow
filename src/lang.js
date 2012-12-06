@@ -1,34 +1,28 @@
-(function(S){//依赖core
-    
-    var core_trim = String.prototype.trim,
-        core_push = Array.prototype.push,
-        rtrim = /^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g,
-        rcamelCase = /-([a-z])/ig;
+define([Array.isArray?'':'lang-patch'],function(){
 
+    var core_push = Array.prototype.push,
+      rcamelCase = /-([a-z])/ig;
 
     S.extend(S,{
-        each : function(object, callback) {
-            var i = 0,
-                length, name;
-            if(typeof object === 'function') {
-                callback = object;
-                object = this;
+        isString: function(obj) {
+            return S.type(obj) == 'string';
+        },
+        isFunction: function(obj) {
+            return S.type(obj) === "function";
+        },
+        isArray:Array.isArray,
+        isObject: function(obj) {
+            return S.type(obj) === 'object';
+        },
+        isEmptyObject: function(obj) {
+            var name;
+            for(name in obj) {
+                return false;
             }
-            length = object.length;
-            if(length) {
-                for(; i < length; i++) {
-                    if(callback.call(object[i], i, object[i], object) === false) {
-                        break;
-                    }
-                }
-            } else {
-                for(name in object) {
-                    if(callback.call(object[name], name, object[name], object) === false) {
-                        break;
-                    }
-                }
-            }
-            return object;
+            return true;
+        },
+        isWindow: function( obj ) {
+            return obj && typeof obj === 'object' && 'setInterval' in obj;
         },
         makeArray: function( arr, results ) {
             var type,
@@ -62,18 +56,18 @@
             }
             return xml;
         },
-        capitalize : function( str ){
-            var firstStr = str.charAt(0);
-            return firstStr.toUpperCase() + str.replace( firstStr, '' );
-        },
-        camelCase: function(string) {
-            return string.replace('-ms-', 'ms-').replace(rcamelCase, function(match, letter) {
-                return(letter + '').toUpperCase();
-            });
-        },
+        // capitalize : function( str ){
+        //     var firstStr = str.charAt(0);
+        //     return firstStr.toUpperCase() + str.replace( firstStr, '' );
+        // },
+        // camelCase: function(string) {
+        //     return string.replace('-ms-', 'ms-').replace(rcamelCase, function(match, letter) {
+        //         return(letter + '').toUpperCase();
+        //     });
+        // },
         oneObject: function(array, val) {
             if(typeof array == "string") {
-                array = array.match(rword) || [];
+                array = array.match(S.rword) || [];
             }
             var result = {},
                 value = val !== void 0 ? val : 1;
@@ -82,59 +76,44 @@
             }
             return result;
         },
-        isString: function(obj) {
-            return S.type(obj) == 'string';
-        },
-        isFunction: function(obj) {
-            return S.type(obj) === "function";
-        },
-        isArray: Array.isArray || function(obj) {
-            return S.type(obj) === "array";
-        },
-        isObject: function(obj) {
-            return S.type(obj) === 'object';
-        },
-        isEmptyObject: function(obj) {
-            var name;
-            for(name in obj) {
-                return false;
+        /*http://oldenburgs.org/playground/autocomplete/
+        http://www.cnblogs.com/ambar/archive/2011/10/08/throttle-and-debounce.html
+        https://gist.github.com/1306893
+        在一连串调用中，如果我们throttle了一个函数，那么它会减少调用频率，
+        会把A调用之后的XXXms间的N个调用忽略掉，
+        然后再调用XXXms后的第一个调用，然后再忽略N个*/
+        throttle:  function(delay,action,tail,debounce) {
+            var last_call = 0, last_exec = 0, timer = null, curr, diff,
+            ctx, args, exec = function() {
+                last_exec = Date.now;
+                action.apply(ctx,args);
+            };
+            return function() {
+                ctx = this, args = arguments,
+                curr = Date.now, diff = curr - (debounce? last_call: last_exec) - delay;
+                clearTimeout(timer);
+                if(debounce){
+                    if(tail){
+                        timer = setTimeout(exec,delay);
+                    }else if(diff >= 0){
+                        exec();
+                    }
+                }else{
+                    if(diff >= 0){
+                        exec();
+                    }else if(tail){
+                        timer = setTimeout(exec,-diff);
+                    }
+                }
+                last_call = curr;
             }
-            return true;
         },
-        isWindow: function( obj ) {
-            return obj && typeof obj === 'object' && 'setInterval' in obj;
+        //是在一连串调用中，按delay把它们分成几组，每组只有开头或结果的那个调用被执行
+        //debounce比throttle执行的次数更少
+        debounce : function(idle,action,tail) {
+            return $.throttle(idle,action,tail,true);
         }
     });
-
-    S.trim = S.fn.trim = core_trim ? function(string) {
-        return string.trim();
-    } : function(string) {
-        return string.replace(rtrim, '');
-    }
-
-    if(!window.JSON){
-         window.JSON = {
-            parse: function(data) {
-                return(new Function("return " + data))();
-            },
-            stringify: function(vContent) {
-                if(vContent instanceof Object) {
-                    var sOutput = "";
-                    if(vContent.constructor === Array) {
-                        for(var nId = 0; nId < vContent.length; sOutput += this.stringify(vContent[nId]) + ",", nId++);
-                        return "[" + sOutput.substr(0, sOutput.length - 1) + "]";
-                    }
-                    if(vContent.toString !== Object.prototype.toString) {
-                        return "\"" + vContent.toString().replace(/"/g, "\\$&") + "\"";
-                    }
-                    for(var sProp in vContent) {
-                        sOutput += "\"" + sProp.replace(/"/g, "\\$&") + "\":" + this.stringify(vContent[sProp]) + ",";
-                    }
-                    return "{" + sOutput.substr(0, sOutput.length - 1) + "}";
-                }
-                return typeof vContent === "string" ? "\"" + vContent.replace(/"/g, "\\$&") + "\"" : String(vContent);
-            }
-        }
-    }
-
-})(S);
+    
+ 
+});
