@@ -4,7 +4,7 @@
 * 只有在复杂选择器或dom元素创建时依赖selector或node模块
 * ===========================================================
 */
-void function(){
++function(){
     var root = this,
         document = root.document,
         readyList,
@@ -136,7 +136,6 @@ void function(){
                 ( +new Date() ) + 
                 ( Math.random() + '' ).slice( -8 );
         },
-        expando = S.guid(),
         uuid:0,
         noop: function() {},
         type: function(obj) {
@@ -204,10 +203,11 @@ void function(){
                 }
             }
         }
-    });
+    })
 
+    S.expando = S.guid();
 
-    (function(S){
+    void function(){
         var ref = function(value) {
             if(value && typeof value.then === "function") return value;
             return {
@@ -281,7 +281,7 @@ void function(){
 
         S.Deferred=Promise;
 
-    })(S);
+    }();
 
     S.extend(S, {
         isReady: false,
@@ -388,7 +388,7 @@ void function(){
         return S.when(promises, 'ANY');
     }
 
-    ;(function(S){
+    void function(){
         var modules = {},
             returns = [];
             head = document.head || document.getElementsByTagName("head")[0],
@@ -483,7 +483,7 @@ void function(){
         };
 
 
-    })(S);
+    }();
      
 
     root.S = S;

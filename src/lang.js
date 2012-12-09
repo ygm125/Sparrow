@@ -1,4 +1,4 @@
-define([Array.isArray?'':'lang-patch'],function(){
+define(Array.isArray?[]:['lang-patch'],function(){
 
     var core_push = Array.prototype.push,
       rcamelCase = /-([a-z])/ig;
