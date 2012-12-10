@@ -1,0 +1,3 @@
+//require define需要重写
+//require后在domready 触发不了
+//选择器sort检测不知道什么用

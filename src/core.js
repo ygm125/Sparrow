@@ -306,6 +306,7 @@
                     document.removeEventListener("DOMContentLoaded", arguments.callee, false);
                     S.fireReady();
                 }, false);
+                //window.addEventListener( 'load', S.fireReady, false );
             } else if(document.attachEvent) {
                 document.attachEvent("onreadystatechange", function() {
                     if(document.readyState === "complete") {
@@ -313,7 +314,7 @@
                         S.fireReady();
                     }
                 });
-
+                //window.attachEvent( 'onload', S.fireReady );
                 var top = false;
                 try {
                     top = window.frameElement == null && document.documentElement;
